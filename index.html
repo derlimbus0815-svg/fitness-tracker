@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Fitness Tracker">
+    <title>Fitness Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
+            margin: 0;
+            padding: 0;
+        }
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Icon Components
+        const Play = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        );
+
+        const Pause = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+        );
+
+        const RotateCcw = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+            </svg>
+        );
+
+        const CheckCircle = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+        );
+
+        const Circle = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+            </svg>
+        );
+
+        const TrendingUp = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+        );
+
+        const Calendar = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+        );
+
+        const Trophy = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+            </svg>
+        );
+
+        const Zap = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+        );
+
+        const Target = ({ className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>
+            </svg>
+        );
+
+        function FitnessTracker() {
+            const [activeTab, setActiveTab] = useState('home');
+            const [userLevel, setUserLevel] = useState(() => parseInt(localStorage.getItem('userLevel') || '1'));
+            const [xp, setXp] = useState(() => parseInt(localStorage.getItem('xp') || '0'));
+            const xpNeeded = 7;
+            
+            const [timerSeconds, setTimerSeconds] = useState(0);
+            const [isTimerRunning, setIsTimerRunning] = useState(false);
+            const [sessionCalories, setSessionCalories] = useState('');
+            const [currentWeek, setCurrentWeek] = useState(1);
+
+            const defaultWorkoutPlan = {
+                'Montag': {
+                    duration: 60,
+                    calories: 450,
+                    exercises: [
+                        { name: 'Handstand-Progression', xp: 20 },
+                        { name: 'Dips - 4x8-15', xp: 15 },
+                        { name: 'Langhantel Overhead Press - 3x6-8', xp: 15 },
+                        { name: 'Planche-Progression', xp: 15 },
+                        { name: 'Goblet Squats - 3x12-15', xp: 12 },
+                        { name: 'Langhantel Curls - 3x10-12', xp: 10 }
+                    ]
+                },
+                'Dienstag': {
+                    duration: 70,
+                    calories: 480,
+                    exercises: [
+                        { name: 'Muscle-up-Progression', xp: 20 },
+                        { name: 'Langhantel Rows - 4x8-10', xp: 15 },
+                        { name: 'Front-Lever-Progression', xp: 15 },
+                        { name: 'Langhantel Deadlifts - 3x5', xp: 15 },
+                        { name: 'Good Mornings - 3x10-12', xp: 12 },
+                        { name: 'Facepulls - 3x15', xp: 10 },
+                        { name: 'Mobility Finisher - 10 Min', xp: 10 }
+                    ]
+                },
+                'Mittwoch': {
+                    duration: 45,
+                    calories: 200,
+                    exercises: [
+                        { name: '30 Min Spaziergang/Cardio', xp: 15 },
+                        { name: 'Yoga Flow - 15 Min', xp: 10 },
+                        { name: 'Faszienrolle/Stretching', xp: 10 }
+                    ]
+                },
+                'Donnerstag': {
+                    duration: 65,
+                    calories: 550,
+                    exercises: [
+                        { name: 'Langhantel Back Squats - 5x5', xp: 20 },
+                        { name: 'Bulgarian Split Squats - 3x8-10', xp: 15 },
+                        { name: 'Pistol-Squat-Progression', xp: 15 },
+                        { name: 'Nordic Curls - 3x max', xp: 15 },
+                        { name: 'Hanging Leg Raises - 4x10-15', xp: 10 },
+                        { name: 'L-Sit-Progression', xp: 10 }
+                    ]
+                },
+                'Freitag': {
+                    duration: 70,
+                    calories: 500,
+                    exercises: [
+                        { name: 'Muscle-up-Progression', xp: 20 },
+                        { name: 'Clean & Press - 4x5', xp: 15 },
+                        { name: 'Weighted Push-ups - 3x8-12', xp: 15 },
+                        { name: 'Langhantel Hack Squats - 3x10-12', xp: 15 },
+                        { name: 'L-Sit-Progression', xp: 10 },
+                        { name: 'Hollow Body Holds - 3x45s', xp: 10 },
+                        { name: 'Handstand-Progression', xp: 15 }
+                    ]
+                },
+                'Samstag': {
+                    duration: 60,
+                    calories: 520,
+                    exercises: [
+                        { name: 'Langhantel Front Squats - 4x8-10', xp: 20 },
+                        { name: 'Romanian Deadlifts - 4x8-10', xp: 18 },
+                        { name: 'Weighted Lunges - 3x10 pro Bein', xp: 15 },
+                        { name: 'Calf Raises (Langhantel) - 4x15-20', xp: 12 },
+                        { name: 'Human-Flag-Progression', xp: 15 },
+                        { name: 'Core-Circuit - 10 Min', xp: 10 }
+                    ]
+                },
+                'Sonntag': {
+                    duration: 0,
+                    calories: 0,
+                    exercises: [
+                        { name: 'Vollständige Regeneration', xp: 0 }
+                    ]
+                }
+            };
+
+            const loadWorkoutPlan = () => {
+                const saved = localStorage.getItem('workoutPlan');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    let needsUpdate = false;
+                    Object.keys(parsed).forEach(day => {
+                        if (parsed[day].calories === undefined) {
+                            needsUpdate = true;
+                            const defaultCalories = {
+                                'Montag': 450, 'Dienstag': 480, 'Mittwoch': 200,
+                                'Donnerstag': 550, 'Freitag': 500, 'Samstag': 520, 'Sonntag': 0
+                            };
+                            parsed[day].calories = defaultCalories[day] || 0;
+                        }
+                    });
+                    if (needsUpdate) {
+                        localStorage.setItem('workoutPlan', JSON.stringify(parsed));
+                    }
+                    return parsed;
+                }
+                return defaultWorkoutPlan;
+            };
+
+            const [workoutPlan] = useState(loadWorkoutPlan);
+            const [completedExercises, setCompletedExercises] = useState(() => 
+                JSON.parse(localStorage.getItem('completedExercises') || '{}')
+            );
+            const [sessions, setSessions] = useState(() => 
+                JSON.parse(localStorage.getItem('sessions') || '[]')
+            );
+            const [progressData, setProgressData] = useState(() => 
+                JSON.parse(localStorage.getItem('progressData') || '[]')
+            );
+
+            useEffect(() => {
+                localStorage.setItem('userLevel', userLevel.toString());
+            }, [userLevel]);
+
+            useEffect(() => {
+                localStorage.setItem('xp', xp.toString());
+            }, [xp]);
+
+            useEffect(() => {
+                localStorage.setItem('completedExercises', JSON.stringify(completedExercises));
+            }, [completedExercises]);
+
+            useEffect(() => {
+                localStorage.setItem('sessions', JSON.stringify(sessions));
+            }, [sessions]);
+
+            useEffect(() => {
+                localStorage.setItem('progressData', JSON.stringify(progressData));
+            }, [progressData]);
+
+            useEffect(() => {
+                let interval;
+                if (isTimerRunning) {
+                    interval = setInterval(() => {
+                        setTimerSeconds(prev => prev + 1);
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [isTimerRunning]);
+
+            const formatTime = (seconds) => {
+                const hrs = Math.floor(seconds / 3600);
+                const mins = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                return hrs.toString().padStart(2, '0') + ':' + 
+                       mins.toString().padStart(2, '0') + ':' + 
+                       secs.toString().padStart(2, '0');
+            };
+
+            const toggleTimer = () => {
+                setIsTimerRunning(!isTimerRunning);
+            };
+
+            const resetTimer = () => {
+                setIsTimerRunning(false);
+                setTimerSeconds(0);
+                setSessionCalories('');
+            };
+
+            const endSession = () => {
+                if (timerSeconds > 0) {
+                    const newSession = {
+                        date: new Date().toISOString().split('T')[0],
+                        duration: timerSeconds,
+                        calories: parseInt(sessionCalories) || 0,
+                        week: currentWeek
+                    };
+                    setSessions([newSession, ...sessions]);
+                    resetTimer();
+                }
+            };
+
+            const toggleExercise = (day, exercise) => {
+                const key = day + '-' + exercise.name;
+                const wasCompleted = completedExercises[key];
+                
+                const newCompleted = { ...completedExercises };
+                newCompleted[key] = !wasCompleted;
+                setCompletedExercises(newCompleted);
+                
+                if (!wasCompleted && exercise.xp) {
+                    const newXP = xp + exercise.xp;
+                    if (newXP >= xpNeeded * 100) {
+                        setUserLevel(prev => prev + 1);
+                        setXp(newXP - (xpNeeded * 100));
+                    } else {
+                        setXp(newXP);
+                    }
+                } else if (wasCompleted && exercise.xp) {
+                    setXp(prev => Math.max(0, prev - exercise.xp));
+                }
+            };
+
+            const getLevelTitle = (level) => {
+                if (level < 4) return "Novice";
+                if (level < 8) return "Beginner";
+                if (level < 12) return "Intermediate";
+                if (level < 20) return "Advanced";
+                if (level < 30) return "Elite";
+                return "Master";
+            };
+
+            const CircularProgress = ({ percentage }) => {
+                const radius = 70;
+                const circumference = 2 * Math.PI * radius;
+                const offset = circumference - (percentage / 100) * circumference;
+                
+                return (
+                    <svg width="180" height="180" className="transform -rotate-90">
+                        <circle cx="90" cy="90" r={radius} stroke="#1e293b" strokeWidth="12" fill="none" />
+                        <circle cx="90" cy="90" r={radius} stroke="url(#gradient)" strokeWidth="12" fill="none" 
+                                strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" 
+                                className="transition-all duration-500" />
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#3b82f6" />
+                                <stop offset="100%" stopColor="#8b5cf6" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                );
+            };
+
+            const addProgress = () => {
+                const date = document.getElementById('progressDate').value;
+                const exercise = document.getElementById('progressExercise').value;
+                const value = document.getElementById('progressValue').value;
+                
+                if (date && exercise && value) {
+                    setProgressData([...progressData, { date, exercise, value }]);
+                    document.getElementById('progressExercise').value = '';
+                    document.getElementById('progressValue').value = '';
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4">
+                    <div className="max-w-4xl mx-auto">
+                        {/* Tab Navigation */}
+                        <div className="flex gap-2 mb-6 bg-slate-800 p-1 rounded-lg overflow-x-auto">
+                            <button onClick={() => setActiveTab('home')} 
+                                    className={'flex-1 py-3 px-4 rounded-md transition-all whitespace-nowrap ' + (activeTab === 'home' ? 'bg-blue-600' : 'hover:bg-slate-700')}>
+                                <Trophy className="w-5 h-5 inline mr-2" />
+                                Home
+                            </button>
+                            <button onClick={() => setActiveTab('workout')} 
+                                    className={'flex-1 py-3 px-4 rounded-md transition-all whitespace-nowrap ' + (activeTab === 'workout' ? 'bg-blue-600' : 'hover:bg-slate-700')}>
+                                <Calendar className="w-5 h-5 inline mr-2" />
+                                Workout
+                            </button>
+                            <button onClick={() => setActiveTab('timer')} 
+                                    className={'flex-1 py-3 px-4 rounded-md transition-all whitespace-nowrap ' + (activeTab === 'timer' ? 'bg-blue-600' : 'hover:bg-slate-700')}>
+                                <Play className="w-5 h-5 inline mr-2" />
+                                Timer
+                            </button>
+                            <button onClick={() => setActiveTab('progress')} 
+                                    className={'flex-1 py-3 px-4 rounded-md transition-all whitespace-nowrap ' + (activeTab === 'progress' ? 'bg-blue-600' : 'hover:bg-slate-700')}>
+                                <TrendingUp className="w-5 h-5 inline mr-2" />
+                                Stats
+                            </button>
+                        </div>
+
+                        {/* HOME TAB */}
+                        {activeTab === 'home' && (
+                            <div className="space-y-6">
+                                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-8 text-center shadow-2xl">
+                                    <div className="flex justify-center mb-6">
+                                        <div className="relative">
+                                            <CircularProgress percentage={(xp / (xpNeeded * 100)) * 100} />
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="text-center">
+                                                    <div className="text-5xl font-bold text-blue-400">{userLevel}</div>
+                                                    <div className="text-xs text-slate-400 mt-1">LEVEL</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <h2 className="text-2xl font-bold mb-2">{getLevelTitle(userLevel)}</h2>
+                                    <p className="text-slate-400 mb-4">{xp} / {xpNeeded * 100} XP</p>
+                                    <div className="w-full bg-slate-700 rounded-full h-3 mb-2">
+                                        <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500"
+                                             style={{ width: ((xp / (xpNeeded * 100)) * 100) + '%' }}></div>
+                                    </div>
+                                    <p className="text-sm text-slate-400">Noch {(xpNeeded * 100) - xp} XP bis Level {userLevel + 1}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-slate-800 rounded-lg p-5 text-center">
+                                        <Zap className="w-8 h-8 mx-auto mb-2 text-yellow-400" />
+                                        <div className="text-2xl font-bold">{Object.values(completedExercises).filter(Boolean).length}</div>
+                                        <div className="text-sm text-slate-400">Übungen erledigt</div>
+                                    </div>
+                                    <div className="bg-slate-800 rounded-lg p-5 text-center">
+                                        <Target className="w-8 h-8 mx-auto mb-2 text-green-400" />
+                                        <div className="text-2xl font-bold">{sessions.length}</div>
+                                        <div className="text-sm text-slate-400">Sessions absolviert</div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-800 rounded-lg p-5 shadow-lg">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-xl font-bold">Woche {currentWeek} / 12</h3>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setCurrentWeek(Math.max(1, currentWeek - 1))} 
+                                                    className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">←</button>
+                                            <button onClick={() => setCurrentWeek(Math.min(12, currentWeek + 1))} 
+                                                    className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">→</button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {Object.entries(workoutPlan).map(([day, plan]) => {
+                                            const completed = plan.exercises.filter(ex => completedExercises[day + '-' + ex.name]).length;
+                                            const total = plan.exercises.length;
+                                            const percentage = (completed / total) * 100;
+                                            
+                                            return (
+                                                <div key={day} className="p-3 bg-slate-700 rounded">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="font-medium">{day}</span>
+                                                        <div className="text-sm text-slate-400">
+                                                            {plan.duration} Min
+                                                            {plan.calories > 0 && <span className="text-orange-400 ml-2">🔥 {plan.calories} kcal</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full bg-slate-600 rounded-full h-2">
+                                                        <div className="bg-green-500 h-2 rounded-full transition-all" 
+                                                             style={{ width: percentage + '%' }}></div>
+                                                    </div>
+                                                    <div className="text-xs text-slate-400 mt-1">{completed} / {total} erledigt</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* WORKOUT TAB */}
+                        {activeTab === 'workout' && (
+                            <div className="space-y-4">
+                                <div className="bg-slate-800 rounded-lg p-4 mb-4">
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-xl font-bold">Woche {currentWeek} / 12</h2>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setCurrentWeek(Math.max(1, currentWeek - 1))} 
+                                                    className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">←</button>
+                                            <button onClick={() => setCurrentWeek(Math.min(12, currentWeek + 1))} 
+                                                    className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">→</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {Object.entries(workoutPlan).map(([day, plan]) => (
+                                    <div key={day} className="bg-slate-800 rounded-lg p-5 shadow-lg">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="text-xl font-bold text-blue-400">{day}</h3>
+                                            <div className="text-right">
+                                                <span className="text-slate-400 text-sm">{plan.duration} Min</span>
+                                                {plan.calories > 0 && <span className="text-slate-400 text-sm"> | ~{plan.calories} kcal</span>}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {plan.exercises.map((exercise, idx) => {
+                                                const key = day + '-' + exercise.name;
+                                                const isCompleted = completedExercises[key];
+                                                
+                                                return (
+                                                    <div key={idx} onClick={() => toggleExercise(day, exercise)}
+                                                         className={'flex items-center gap-3 p-3 rounded cursor-pointer transition-all ' + 
+                                                                   (isCompleted ? 'bg-green-900/30 line-through text-slate-400' : 'bg-slate-700 hover:bg-slate-600')}>
+                                                        {isCompleted ? 
+                                                            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" /> : 
+                                                            <Circle className="w-5 h-5 text-slate-500 flex-shrink-0" />
+                                                        }
+                                                        <div className="flex-1">
+                                                            <div>{exercise.name}</div>
+                                                        </div>
+                                                        {exercise.xp > 0 && 
+                                                            <span className="text-xs text-yellow-400 bg-yellow-900/30 px-2 py-1 rounded">
+                                                                +{exercise.xp} XP
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* TIMER TAB */}
+                        {activeTab === 'timer' && (
+                            <div className="space-y-6">
+                                <div className="bg-slate-800 rounded-lg p-8 text-center shadow-lg">
+                                    <div className="text-6xl font-mono font-bold mb-6 text-blue-400">
+                                        {formatTime(timerSeconds)}
+                                    </div>
+                                    <div className="flex gap-4 justify-center mb-6">
+                                        <button onClick={toggleTimer}
+                                                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2 transition-all">
+                                            {isTimerRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                                            {isTimerRunning ? 'Pause' : 'Start'}
+                                        </button>
+                                        <button onClick={resetTimer}
+                                                className="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center gap-2 transition-all">
+                                            <RotateCcw className="w-5 h-5" />
+                                            Reset
+                                        </button>
+                                    </div>
+                                    <div className="max-w-xs mx-auto">
+                                        <label className="block text-sm text-slate-400 mb-2">Kalorien (optional)</label>
+                                        <input type="number" value={sessionCalories}
+                                               onChange={(e) => setSessionCalories(e.target.value)}
+                                               placeholder="z.B. 450"
+                                               className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <button onClick={endSession} disabled={timerSeconds === 0}
+                                            className="mt-6 px-8 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg transition-all">
+                                        Session beenden
+                                    </button>
+                                </div>
+
+                                <div className="bg-slate-800 rounded-lg p-5 shadow-lg">
+                                    <h3 className="text-xl font-bold mb-4">Letzte Sessions</h3>
+                                    {sessions.length === 0 ? (
+                                        <p className="text-slate-400 text-center py-4">Noch keine Sessions aufgezeichnet</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {sessions.slice(0, 5).map((session, idx) => (
+                                                <div key={idx} className="flex justify-between items-center p-3 bg-slate-700 rounded">
+                                                    <div>
+                                                        <div className="font-medium">{session.date}</div>
+                                                        <div className="text-sm text-slate-400">Woche {session.week}</div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-blue-400">{formatTime(session.duration)}</div>
+                                                        {session.calories > 0 && (
+                                                            <div className="text-sm text-slate-400">{session.calories} kcal</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* PROGRESS TAB */}
+                        {activeTab === 'progress' && (
+                            <div className="space-y-6">
+                                <div className="bg-slate-800 rounded-lg p-5 shadow-lg">
+                                    <h3 className="text-xl font-bold mb-4">Messungen eintragen</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <input type="date" id="progressDate" defaultValue={new Date().toISOString().split('T')[0]}
+                                               className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500" />
+                                        <input type="text" id="progressExercise" placeholder="Übung (z.B. Pull-ups)"
+                                               className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500" />
+                                        <input type="text" id="progressValue" placeholder="Wert (z.B. 15 reps)"
+                                               className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500" />
+                                    </div>
+                                    <button onClick={addProgress}
+                                            className="w-full mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-all">
+                                        Hinzufügen
+                                    </button>
+                                </div>
+
+                                <div className="bg-slate-800 rounded-lg p-5 shadow-lg">
+                                    <h3 className="text-xl font-bold mb-4">Verlauf</h3>
+                                    {progressData.length === 0 ? (
+                                        <p className="text-slate-400 text-center py-4">Noch keine Messungen eingetragen</p>
+                                    ) : (
+                                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                                            {[...progressData].reverse().map((entry, idx) => (
+                                                <div key={idx} className="flex justify-between items-center p-3 bg-slate-700 rounded">
+                                                    <div>
+                                                        <div className="font-medium">{entry.exercise}</div>
+                                                        <div className="text-sm text-slate-400">{entry.date}</div>
+                                                    </div>
+                                                    <div className="text-blue-400 font-bold">{entry.value}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<FitnessTracker />);
+    </script>
+</body>
+</html>
