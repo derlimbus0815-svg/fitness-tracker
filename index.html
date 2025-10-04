@@ -36,8 +36,6 @@
         const Trophy = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>;
         const Zap = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
         const Target = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>;
-        const Flame = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>;
-        const SkipForward = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>;
         const X = ({className}) => <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 
         function FitnessTracker() {
@@ -48,9 +46,20 @@
             const [timerSeconds, setTimerSeconds] = useState(0);
             const [isTimerRunning, setIsTimerRunning] = useState(false);
             const [sessionCalories, setSessionCalories] = useState('');
-            const [currentWeek, setCurrentWeek] = useState(1);
+            const [currentWeek, setCurrentWeek] = useState(() => parseInt(localStorage.getItem('currentWeek') || '1'));
 
-            const defaultWorkoutPlan = {
+            const [skillGoals, setSkillGoals] = useState(() => 
+                JSON.parse(localStorage.getItem('skillGoals') || JSON.stringify({
+                    'Muscle-up': { current: 0, target: 1, unit: 'Reps', milestone: 0 },
+                    'Handstand': { current: 30, target: 60, unit: 'Sekunden', milestone: 30 },
+                    'Pistol Squat': { current: 0, target: 12, unit: 'Reps/Bein', milestone: 0 },
+                    'Front Lever': { current: 0, target: 10, unit: 'Sek (Full)', milestone: 0 },
+                    'Back Squat': { current: 60, target: 120, unit: 'kg', milestone: 60 },
+                    'Planche': { current: 0, target: 8, unit: 'Sek (Tuck)', milestone: 0 }
+                }))
+            );
+
+            const baseWorkout = {
                 'Montag': { duration: 60, calories: 450, exercises: [
                     { name: 'Handstand-Progression', xp: 20 },
                     { name: 'Dips - 4x8-15', xp: 15 },
@@ -101,67 +110,128 @@
                 'Sonntag': { duration: 0, calories: 0, exercises: [{ name: 'Vollständige Regeneration', xp: 0 }]}
             };
 
-            const migrateWorkoutPlan = (plan) => {
-                if (!plan || typeof plan !== 'object') return defaultWorkoutPlan;
-                const days = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-                if (!days.every(d => plan[d])) return defaultWorkoutPlan;
-
-                let needsUpdate = false;
-                const cals = {'Montag': 450, 'Dienstag': 480, 'Mittwoch': 200, 'Donnerstag': 550, 'Freitag': 500, 'Samstag': 520, 'Sonntag': 0};
-
-                Object.keys(plan).forEach(day => {
-                    if (plan[day].calories === undefined) {
-                        plan[day].calories = cals[day] || 0;
-                        needsUpdate = true;
-                    }
-                    if (plan[day].exercises) {
-                        plan[day].exercises.forEach(ex => {
-                            if (isWeightExercise(ex.name) && !ex.needsWeight) {
-                                ex.needsWeight = true;
-                                needsUpdate = true;
-                            }
-                        });
-                    }
-                });
-
-                if (needsUpdate) localStorage.setItem('workoutPlan', JSON.stringify(plan));
-                return plan;
-            };
-
-            const loadWorkoutPlan = () => {
-                try {
-                    const saved = localStorage.getItem('workoutPlan');
-                    if (saved) return migrateWorkoutPlan(JSON.parse(saved));
-                } catch (e) {
-                    localStorage.removeItem('workoutPlan');
+            const workoutProgression = {
+                1: baseWorkout,
+                2: baseWorkout,
+                3: {
+                    ...baseWorkout,
+                    'Dienstag': { ...baseWorkout.Dienstag, exercises: [
+                        { name: 'Scapula Pull-ups - 3x10', xp: 15 },
+                        { name: 'Langhantel Rows - 4x9-11', xp: 15, needsWeight: true },
+                        { name: 'Front-Lever-Progression', xp: 15 },
+                        { name: 'Langhantel Deadlifts - 3x5', xp: 15, needsWeight: true },
+                        { name: 'Good Mornings - 3x12-14', xp: 12 },
+                        { name: 'Facepulls - 3x15', xp: 10 },
+                        { name: 'Mobility Finisher - 10 Min', xp: 10 }
+                    ]}
+                },
+                4: {
+                    ...baseWorkout,
+                    'Dienstag': { ...baseWorkout.Dienstag, exercises: [
+                        { name: 'Scapula Pull-ups - 3x10', xp: 15 },
+                        { name: 'Langhantel Rows - 4x9-11', xp: 15, needsWeight: true },
+                        { name: 'Front-Lever-Progression', xp: 15 },
+                        { name: 'Langhantel Deadlifts - 3x5', xp: 15, needsWeight: true },
+                        { name: 'Good Mornings - 3x12-14', xp: 12 },
+                        { name: 'Facepulls - 3x15', xp: 10 },
+                        { name: 'Mobility Finisher - 10 Min', xp: 10 }
+                    ]},
+                    'Montag': { ...baseWorkout.Montag, exercises: [
+                        { name: 'Handstand-Progression', xp: 20 },
+                        { name: 'Dips - 4x10-16', xp: 15 },
+                        { name: 'Langhantel Overhead Press - 3x6-8', xp: 15, needsWeight: true },
+                        { name: 'Frog Stand - 3x max hold', xp: 15 },
+                        { name: 'Goblet Squats - 3x12-15', xp: 12, needsWeight: true },
+                        { name: 'Langhantel Curls - 3x10-12', xp: 10, needsWeight: true }
+                    ]}
+                },
+                5: {
+                    ...baseWorkout,
+                    'Dienstag': { ...baseWorkout.Dienstag, exercises: [
+                        { name: 'Explosive Pull-ups - 4x5', xp: 20 },
+                        { name: 'Langhantel Rows - 4x10-12', xp: 15, needsWeight: true },
+                        { name: 'Front-Lever Tuck - 4x max hold', xp: 15 },
+                        { name: 'Langhantel Deadlifts - 3x5', xp: 15, needsWeight: true },
+                        { name: 'Good Mornings - 3x12-15', xp: 12 },
+                        { name: 'Facepulls - 3x15', xp: 10 },
+                        { name: 'Mobility Finisher - 10 Min', xp: 10 }
+                    ]},
+                    'Montag': { ...baseWorkout.Montag, exercises: [
+                        { name: 'Handstand Shoulder Taps - 3x6', xp: 20 },
+                        { name: 'Dips - 4x12-16', xp: 15 },
+                        { name: 'Langhantel Overhead Press - 3x6-8', xp: 15, needsWeight: true },
+                        { name: 'Planche Lean - 4x15s', xp: 15 },
+                        { name: 'Goblet Squats - 3x15', xp: 12, needsWeight: true },
+                        { name: 'Langhantel Curls - 3x12', xp: 10, needsWeight: true }
+                    ]},
+                    'Mittwoch': { ...baseWorkout.Mittwoch, exercises: [
+                        { name: '30 Min Spaziergang/Cardio', xp: 15 },
+                        { name: 'Hollow Body to Arch - 3x8', xp: 12 },
+                        { name: 'Yoga Flow - 15 Min', xp: 10 },
+                        { name: 'Faszienrolle/Stretching', xp: 10 }
+                    ]}
+                },
+                6: {
+                    ...baseWorkout,
+                    'Dienstag': { ...baseWorkout.Dienstag, exercises: [
+                        { name: 'Explosive Pull-ups - 4x6', xp: 20 },
+                        { name: 'Band-assisted Muscle-up Negative - 3x3', xp: 20 },
+                        { name: 'Langhantel Rows - 4x10-12', xp: 15, needsWeight: true },
+                        { name: 'Front-Lever Tuck - 4x max hold', xp: 15 },
+                        { name: 'Langhantel Deadlifts - 3x5', xp: 15, needsWeight: true },
+                        { name: 'Facepulls - 3x15', xp: 10 }
+                    ]},
+                    'Montag': { ...baseWorkout.Montag, exercises: [
+                        { name: 'Handstand Shoulder Taps - 3x8', xp: 20 },
+                        { name: 'Dips - 5x12-15', xp: 15 },
+                        { name: 'Langhantel Overhead Press - 3x7-9', xp: 15, needsWeight: true },
+                        { name: 'Tuck Planche Attempts - 4x max', xp: 18 },
+                        { name: 'Goblet Squats - 3x15', xp: 12, needsWeight: true },
+                        { name: 'Langhantel Curls - 3x12', xp: 10, needsWeight: true }
+                    ]},
+                    'Mittwoch': { ...baseWorkout.Mittwoch, exercises: [
+                        { name: '30 Min Spaziergang/Cardio', xp: 15 },
+                        { name: 'Hollow Body to Arch - 3x10', xp: 12 },
+                        { name: 'Yoga Flow - 15 Min', xp: 10 },
+                        { name: 'Faszienrolle/Stretching', xp: 10 }
+                    ]}
+                },
+                7: {
+                    'Montag': { duration: 30, calories: 200, exercises: [{ name: 'Leichtes Mobility-Training', xp: 20 }]},
+                    'Dienstag': { duration: 30, calories: 200, exercises: [{ name: 'Spaziergang 30 Min', xp: 20 }]},
+                    'Mittwoch': { duration: 45, calories: 200, exercises: [
+                        { name: 'Yoga Flow - 30 Min', xp: 20 },
+                        { name: 'Faszienrolle - 15 Min', xp: 10 }
+                    ]},
+                    'Donnerstag': { duration: 30, calories: 200, exercises: [{ name: 'Schwimmen oder Radfahren - 30 Min', xp: 20 }]},
+                    'Freitag': { duration: 30, calories: 150, exercises: [{ name: 'Stretching & Meditation', xp: 20 }]},
+                    'Samstag': { duration: 0, calories: 0, exercises: [{ name: 'Vollständige Ruhe', xp: 0 }]},
+                    'Sonntag': { duration: 0, calories: 0, exercises: [{ name: 'Vollständige Ruhe', xp: 0 }]}
                 }
-                return defaultWorkoutPlan;
             };
 
-            const [workoutPlan] = useState(loadWorkoutPlan);
+            const getCurrentWorkout = (week) => {
+                if (workoutProgression[week]) return workoutProgression[week];
+                if (week <= 6) return workoutProgression[6];
+                if (week === 7) return workoutProgression[7];
+                return baseWorkout;
+            };
+
+            const [workoutPlan, setWorkoutPlan] = useState(() => getCurrentWorkout(currentWeek));
             const [completedExercises, setCompletedExercises] = useState(() => JSON.parse(localStorage.getItem('completedExercises') || '{}'));
             const [sessions, setSessions] = useState(() => JSON.parse(localStorage.getItem('sessions') || '[]'));
             const [progressData, setProgressData] = useState(() => JSON.parse(localStorage.getItem('progressData') || '[]'));
             const [weightTracking, setWeightTracking] = useState(() => JSON.parse(localStorage.getItem('weightTracking') || '{}'));
             const [showWeightModal, setShowWeightModal] = useState(false);
             const [currentExercise, setCurrentExercise] = useState(null);
-            const [warmupState, setWarmupState] = useState({ activeProgram: null, isRunning: false, currentExerciseIndex: 0, elapsedTime: 0, isPaused: false, countdown: 0 });
 
-            const warmupPrograms = {
-                preWorkout: { name: "Aufwärmen vor Training", duration: 10, description: "Ganzkörper-Vorbereitung", xp: 50, exercises: [
-                    { name: "Jumping Jacks", duration: 30, reps: "30 Sekunden", targetArea: "Cardio" },
-                    { name: "High Knees", duration: 30, reps: "30 Sekunden", targetArea: "Cardio" },
-                    { name: "Arm Swings", duration: 30, reps: "30 Sekunden", targetArea: "Schultern" },
-                    { name: "Torso Twists", duration: 45, reps: "15 pro Seite", targetArea: "Rumpf" },
-                    { name: "Hip Circles", duration: 45, reps: "15 pro Richtung", targetArea: "Hüfte" },
-                    { name: "Leg Swings", duration: 45, reps: "15 pro Bein", targetArea: "Beine" }
-                ]},
-                postWorkout: { name: "Dehnen nach Training", duration: 8, description: "Cool-down", xp: 40, exercises: [
-                    { name: "Schulter-Dehnung", duration: 30, reps: "30 Sek.", targetArea: "Schultern" },
-                    { name: "Quadriceps-Dehnung", duration: 30, reps: "30 Sek.", targetArea: "Beine" },
-                    { name: "Hamstring-Dehnung", duration: 30, reps: "30 Sek.", targetArea: "Beine" },
-                    { name: "Child's Pose", duration: 45, reps: "45 Sek.", targetArea: "Ganzkörper" }
-                ]}
+            const getCycleInfo = (week) => {
+                if (week <= 6) return { name: 'Zyklus 1: Foundation', color: 'blue', phase: 'cycle1' };
+                if (week === 7) return { name: 'Deload-Woche', color: 'green', phase: 'deload1' };
+                if (week <= 13) return { name: 'Zyklus 2: Skill Development', color: 'purple', phase: 'cycle2' };
+                if (week === 14) return { name: 'Deload-Woche', color: 'green', phase: 'deload2' };
+                if (week <= 20) return { name: 'Zyklus 3: Advanced Skills', color: 'orange', phase: 'cycle3' };
+                return { name: 'Wartungsmodus', color: 'gray', phase: 'maintenance' };
             };
 
             const getExerciseKey = (name) => Object.keys(weightTracking).find(k => name.includes(k)) || name;
@@ -183,10 +253,12 @@
 
             useEffect(() => { localStorage.setItem('userLevel', userLevel); }, [userLevel]);
             useEffect(() => { localStorage.setItem('xp', xp); }, [xp]);
+            useEffect(() => { localStorage.setItem('currentWeek', currentWeek); }, [currentWeek]);
             useEffect(() => { localStorage.setItem('completedExercises', JSON.stringify(completedExercises)); }, [completedExercises]);
             useEffect(() => { localStorage.setItem('sessions', JSON.stringify(sessions)); }, [sessions]);
             useEffect(() => { localStorage.setItem('progressData', JSON.stringify(progressData)); }, [progressData]);
             useEffect(() => { localStorage.setItem('weightTracking', JSON.stringify(weightTracking)); }, [weightTracking]);
+            useEffect(() => { localStorage.setItem('skillGoals', JSON.stringify(skillGoals)); }, [skillGoals]);
 
             useEffect(() => {
                 let int;
@@ -197,6 +269,12 @@
             const formatTime = (s) => {
                 const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
                 return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+            };
+
+            const changeWeek = (newWeek) => {
+                const validWeek = Math.max(1, Math.min(20, newWeek));
+                setCurrentWeek(validWeek);
+                setWorkoutPlan(getCurrentWorkout(validWeek));
             };
 
             const toggleExercise = (day, ex) => {
@@ -252,6 +330,21 @@
                 setCurrentExercise(null);
             };
 
+            const updateSkillGoal = (skill, value) => {
+                const newGoals = { ...skillGoals };
+                newGoals[skill].current = parseFloat(value);
+                if (value > newGoals[skill].milestone) {
+                    newGoals[skill].milestone = parseFloat(value);
+                    const bonusXP = 100;
+                    const newXP = xp + bonusXP;
+                    if (newXP >= xpNeeded * 100) {
+                        setUserLevel(p => p + 1);
+                        setXp(newXP - (xpNeeded * 100));
+                    } else setXp(newXP);
+                }
+                setSkillGoals(newGoals);
+            };
+
             const getLevelTitle = (l) => {
                 if (l < 4) return "Novice";
                 if (l < 8) return "Beginner";
@@ -278,6 +371,9 @@
                         <div className="flex gap-2 mb-6 bg-slate-800 p-1 rounded-lg overflow-x-auto">
                             <button onClick={() => setActiveTab('home')} className={'flex-1 py-3 px-4 rounded-md transition-all whitespace-nowrap ' + (activeTab === 'home' ? 'bg-blue-600' : 'hover:bg-slate-700')}>
                                 <Trophy className="w-5 h-5 inline mr-2" />Home
+                            </button>
+                            <button onClick={() => setActiveTab('goals')} className={'flex-1 py-3 px-4 rounded-md transition-all whitespace-nowrap ' + (activeTab === 'goals' ? 'bg-purple-600' : 'hover:bg-slate-700')}>
+                                <Target className="w-5 h-5 inline mr-2" />Ziele
                             </button>
                             <button onClick={() => setActiveTab('workout')} className={'flex-1 py-3 px-4 rounded-md transition-all whitespace-nowrap ' + (activeTab === 'workout' ? 'bg-blue-600' : 'hover:bg-slate-700')}>
                                 <Calendar className="w-5 h-5 inline mr-2" />Workout
@@ -311,6 +407,30 @@
                                     </div>
                                     <p className="text-sm text-slate-400">Noch {(xpNeeded * 100) - xp} XP bis Level {userLevel + 1}</p>
                                 </div>
+
+                                <div className={'bg-slate-800 rounded-lg p-5 shadow-lg border-2 border-' + getCycleInfo(currentWeek).color + '-500'}>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h3 className="text-xl font-bold">Woche {currentWeek}</h3>
+                                            <p className={'text-sm text-' + getCycleInfo(currentWeek).color + '-400'}>{getCycleInfo(currentWeek).name}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => changeWeek(currentWeek - 1)} disabled={currentWeek === 1} className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed">←</button>
+                                            <button onClick={() => changeWeek(currentWeek + 1)} disabled={currentWeek === 20} className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed">→</button>
+                                        </div>
+                                    </div>
+                                    {currentWeek === 7 && (
+                                        <div className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded">
+                                            <p className="text-sm text-green-300">Regenerationswoche - Dein Körper braucht Erholung! Nur leichte Aktivitäten.</p>
+                                        </div>
+                                    )}
+                                    {currentWeek === 6 && (
+                                        <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700 rounded">
+                                            <p className="text-sm text-blue-300">Letzte Woche des Zyklus! Nächste Woche ist Deload.</p>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-slate-800 rounded-lg p-5 text-center">
                                         <Zap className="w-8 h-8 mx-auto mb-2 text-yellow-400" />
@@ -326,8 +446,60 @@
                             </div>
                         )}
 
+                        {activeTab === 'goals' && (
+                            <div className="space-y-4">
+                                <div className="bg-slate-800 rounded-lg p-5 shadow-lg">
+                                    <h3 className="text-xl font-bold mb-4">Deine 6 großen Ziele</h3>
+                                    <p className="text-sm text-slate-400 mb-4">Langzeit-Ziele über 12-18 Monate. Aktualisiere deine Fortschritte regelmäßig!</p>
+                                </div>
+                                {Object.entries(skillGoals).map(([skill, data]) => (
+                                    <div key={skill} className="bg-slate-800 rounded-lg p-5 shadow-lg">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h4 className="text-lg font-bold text-blue-400">{skill}</h4>
+                                                <p className="text-sm text-slate-400">Ziel: {data.target} {data.unit}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-2xl font-bold">{data.current}</div>
+                                                <div className="text-xs text-slate-400">{data.unit}</div>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-slate-700 rounded-full h-3 mb-3">
+                                            <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all" style={{ width: ((data.current / data.target) * 100) + '%' }}></div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input type="number" step="0.5" placeholder="Neuer Wert" id={'skill-' + skill} className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                            <button onClick={() => {
+                                                const val = document.getElementById('skill-' + skill).value;
+                                                if (val) {
+                                                    updateSkillGoal(skill, val);
+                                                    document.getElementById('skill-' + skill).value = '';
+                                                }
+                                            }} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-all">Update</button>
+                                        </div>
+                                        {data.milestone > 0 && (
+                                            <p className="text-xs text-green-400 mt-2">Bester Wert: {data.milestone} {data.unit}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {activeTab === 'workout' && (
                             <div className="space-y-4">
+                                <div className={'bg-slate-800 rounded-lg p-4 mb-4 border-2 border-' + getCycleInfo(currentWeek).color + '-500'}>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <h2 className="text-xl font-bold">Woche {currentWeek}</h2>
+                                            <p className={'text-sm text-' + getCycleInfo(currentWeek).color + '-400'}>{getCycleInfo(currentWeek).name}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => changeWeek(currentWeek - 1)} disabled={currentWeek === 1} className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50">←</button>
+                                            <button onClick={() => changeWeek(currentWeek + 1)} disabled={currentWeek === 20} className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50">→</button>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {Object.entries(workoutPlan).map(([day, plan]) => (
                                     <div key={day} className="bg-slate-800 rounded-lg p-5 shadow-lg">
                                         <div className="flex justify-between items-center mb-4">
@@ -339,7 +511,7 @@
                                         </div>
                                         <div className="space-y-2">
                                             {plan.exercises.map((ex, i) => {
-                                                const key = day + '-' + ex.name;
+                                                const key = day + '-' + ex.name + '-week' + currentWeek;
                                                 const done = completedExercises[key];
                                                 return (
                                                     <div key={i} onClick={() => toggleExercise(day, ex)} className={'flex items-center gap-3 p-3 rounded cursor-pointer transition-all ' + (done ? 'bg-green-900/30 line-through text-slate-400' : 'bg-slate-700 hover:bg-slate-600')}>
